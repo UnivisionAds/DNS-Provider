@@ -15,6 +15,118 @@ logging.basicConfig(
 )
 logger = logging.getLogger()
 
+# Mẫu email cho từng loại vấn đề
+EMAIL_TEMPLATES = {
+    "Phishing": """
+Subject: Urgent: Phishing Website Takedown Request – {domain}
+
+Dear Abuse Team,
+
+We have identified {domain} as a phishing website actively targeting users to steal sensitive data, posing severe risks to online security. 
+
+Details:
+- Domain: {domain}
+- Issue: Phishing
+- Evidence: {evidence}
+- Description: {description}
+
+This malicious activity violates internet safety standards. We urgently request you investigate and take immediate action to disable this domain or block its DNS resolution to protect users.
+
+Sincerely,
+[Your Name]
+    """,
+    "Malware": """
+Subject: Immediate Action Required: Malware Distribution – {domain}
+
+Dear Abuse Team,
+
+The domain {domain} is distributing malware, endangering users by infecting systems with harmful software. This is a critical threat to cybersecurity.
+
+Details:
+- Domain: {domain}
+- Issue: Malware
+- Evidence: {evidence}
+- Description: {description}
+
+We demand swift investigation and removal of this domain or its malicious content from your services to prevent further harm.
+
+Sincerely,
+[Your Name]
+    """,
+    "Botnet": """
+Subject: Critical: Botnet Activity on {domain}
+
+Dear Abuse Team,
+
+We have detected {domain} engaging in botnet activities, orchestrating malicious operations that compromise user devices and networks.
+
+Details:
+- Domain: {domain}
+- Issue: Botnet
+- Evidence: {evidence}
+- Description: {description}
+
+This severe violation requires immediate action. Please investigate and disable this domain or block its DNS resolution to halt the botnet’s operations.
+
+Sincerely,
+[Your Name]
+    """,
+    "Spam": """
+Subject: Urgent: Spam Originating from {domain}
+
+Dear Abuse Team,
+
+The domain {domain} is a source of abusive spam, flooding users with unsolicited and potentially harmful content, disrupting online trust.
+
+Details:
+- Domain: {domain}
+- Issue: Spam
+- Evidence: {evidence}
+- Description: {description}
+
+We request you promptly investigate and suspend this domain or its associated services to stop the spam activity.
+
+Sincerely,
+[Your Name]
+    """,
+    "Pharming": """
+Subject: Immediate Takedown Required: Pharming Attack – {domain}
+
+Dear Abuse Team,
+
+The domain {domain} is conducting pharming attacks, redirecting users to malicious sites to steal sensitive information, posing a grave threat.
+
+Details:
+- Domain: {domain}
+- Issue: Pharming
+- Evidence: {evidence}
+- Description: {description}
+
+We urgently demand investigation and immediate disabling of this domain or its DNS resolution to protect users from this attack.
+
+Sincerely,
+[Your Name]
+    """,
+    "Counterfeit": """
+Subject: Urgent: Counterfeit Website Takedown Request – {domain}
+
+Dear Abuse Team,
+
+The domain {domain} is operating a counterfeit website, fraudulently impersonating a legitimate brand to deceive users and cause financial harm.
+
+Details:
+- Domain: {domain}
+- Issue: Counterfeit
+- Evidence: {evidence}
+- Description: {description}
+
+This fraudulent activity violates intellectual property rights. We insist on immediate investigation and removal of this domain to prevent further deception.
+
+Sincerely,
+[Your Name]
+    """
+}
+
 # === Giao diện nhập liệu ===
 st.set_page_config(page_title="Fake Website Takedown Tool", page_icon="🔒")
 st.title("🔒 Fake Website Takedown Tool (Bulk)")
@@ -82,23 +194,12 @@ if st.button("⚔️ Xử lý hàng loạt"):
                 logger.error(f"Domain={domain}, Error=Failed to get NS records: {e}")
                 continue
 
-            # Tạo nội dung báo cáo
-            report_body = f"""
-Dear Sir/Madam,
-
-I am reporting a fraudulent website: {domain}. The website is engaging in {abuse_type} activities, harming users and brand reputation.
-
-Details:
-- Abuse Type: {abuse_type}
-- Domain: {domain}
-- Description: {description}
-- Evidence: {evidence if evidence else "No additional evidence provided"}
-
-Please investigate and take action to remove or block this website.
-
-Sincerely,
-[Your Name]
-            """
+            # Tạo nội dung báo cáo từ mẫu
+            report_body = EMAIL_TEMPLATES[abuse_type].format(
+                domain=domain,
+                evidence=evidence if evidence else "No additional evidence provided",
+                description=description
+            )
 
             # Gửi email báo cáo
             email_status = "Skipped"
@@ -106,7 +207,7 @@ Sincerely,
                 msg = EmailMessage()
                 msg['From'] = sender_email
                 msg['To'] = to_email
-                msg['Subject'] = f"Fraudulent Website Report – {domain}"
+                msg['Subject'] = report_body.split('\n')[0].replace("Subject: ", "")
                 msg.set_content(report_body)
 
                 with smtplib.SMTP("smtp.gmail.com", 587) as server:
