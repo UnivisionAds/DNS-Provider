@@ -5,6 +5,7 @@ import dns.resolver
 import logging
 from datetime import datetime
 import requests
+import re
 
 # Cấu hình logging
 logging.basicConfig(
@@ -14,6 +15,20 @@ logging.basicConfig(
     filemode="a"
 )
 logger = logging.getLogger()
+
+# Hàm làm sạch và validate domain
+def clean_domain(domain):
+    # Loại bỏ https://, http://, và các ký tự không liên quan
+    domain = domain.strip()
+    domain = re.sub(r'^(https?://)?', '', domain, flags=re.IGNORECASE)  # Bỏ giao thức
+    domain = re.sub(r'/.*$', '', domain)  # Bỏ path
+    domain = domain.lower()
+
+    # Kiểm tra định dạng domain hợp lệ
+    domain_pattern = r'^([a-z0-9-]+\.)*[a-z0-9-]+\.[a-z]{2,}$'
+    if not re.match(domain_pattern, domain):
+        return None
+    return domain
 
 # Mẫu email cho từng loại vấn đề
 EMAIL_TEMPLATES = {
@@ -196,7 +211,7 @@ else:
     sender_email = st.text_input("📧 Nhập Gmail của bạn")
     password = st.text_input("🔑 Nhập App Password", type="password")
 
-domains_input = st.text_area("🌐 Nhập danh sách tên miền giả mạo (mỗi dòng một domain)", height=100)
+domains_input = st.text_area("🌐 Nhập danh sách tên miền giả mạo (mỗi dòng một domain, ví dụ: example.com)", height=100)
 abuse_type = st.selectbox("🚨 Chọn loại vi phạm", ["Phishing", "Malware", "Botnet", "Spam", "Pharming", "Counterfeit"])
 evidence = st.text_area("📎 Nhập bằng chứng bổ sung (URL, mô tả, v.v.)", height=100)
 description = st.selectbox("📝 Chọn mô tả hành vi giả mạo", DESCRIPTION_OPTIONS[abuse_type])
@@ -219,11 +234,18 @@ if st.button("⚔️ Xử lý hàng loạt"):
 
         results = []
         for domain in domains:
+            # Làm sạch và validate domain
+            cleaned_domain = clean_domain(domain)
+            if not cleaned_domain:
+                results.append(f"❌ Domain {domain}: Tên miền không hợp lệ. Vui lòng nhập tên miền đúng định dạng (ví dụ: example.com).")
+                logger.error(f"Domain={domain}, Error=Invalid domain format")
+                continue
+
             # Lấy thông tin DNS provider từ NS records
             dns_provider = ""
             to_email = None
             try:
-                answers = dns.resolver.resolve(domain, 'NS')
+                answers = dns.resolver.resolve(cleaned_domain, 'NS')
                 ns_records = [str(rdata) for rdata in answers]
                 for ns in ns_records:
                     if "cloudflare" in ns.lower():
@@ -234,13 +256,13 @@ if st.button("⚔️ Xử lý hàng loạt"):
                     dns_provider = "Unknown"
                     to_email = "abuse@dnsprovider"
             except Exception as e:
-                results.append(f"❌ Domain {domain}: Lỗi khi lấy NS records: {e}")
-                logger.error(f"Domain={domain}, Error=Failed to get NS records: {e}")
+                results.append(f"❌ Domain {cleaned_domain}: Lỗi khi lấy NS records: {e}")
+                logger.error(f"Domain={cleaned_domain}, Error=Failed to get NS records: {e}")
                 continue
 
             # Tạo nội dung báo cáo từ mẫu
             report_body = EMAIL_TEMPLATES[abuse_type].format(
-                domain=domain,
+                domain=cleaned_domain,
                 evidence=evidence if evidence else "No additional evidence provided",
                 description=final_description
             )
@@ -262,24 +284,24 @@ if st.button("⚔️ Xử lý hàng loạt"):
                 email_status = "Sent"
             except Exception as e:
                 email_status = f"Failed: {e}"
-                logger.error(f"Domain={domain}, EmailError=Failed to send email: {e}")
+                logger.error(f"Domain={cleaned_domain}, EmailError=Failed to send email: {e}")
 
             # Kiểm tra trạng thái domain
             domain_status = "Active"
             try:
-                requests.get(f"http://{domain}", timeout=5)
+                requests.get(f"http://{cleaned_domain}", timeout=5)
             except requests.ConnectionError:
                 domain_status = "Down"
 
             # Ghi log
             log_message = (
-                f"Report processed: Domain={domain}, DNSProvider={dns_provider}, "
+                f"Report processed: Domain={cleaned_domain}, DNSProvider={dns_provider}, "
                 f"To={to_email}, AbuseType={abuse_type}, EmailStatus={email_status}, "
                 f"DomainStatus={domain_status}, Evidence={evidence}, Description={final_description}, Content=\n{report_body}"
             )
             logger.info(log_message)
             results.append(
-                f"✅ Domain {domain}: DNSProvider={dns_provider}, Email={email_status}, Status={domain_status}"
+                f"✅ Domain {cleaned_domain}: DNSProvider={dns_provider}, Email={email_status}, Status={domain_status}"
             )
 
         # Hiển thị kết quả
