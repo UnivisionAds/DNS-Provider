@@ -127,6 +127,46 @@ Sincerely,
     """
 }
 
+# Options mô tả cho từng loại vấn đề (bằng tiếng Anh)
+DESCRIPTION_OPTIONS = {
+    "Phishing": [
+        "Impersonates a login page to steal user credentials.",
+        "Creates fraudulent forms to collect sensitive data like passwords or credit cards.",
+        "Mimics a trusted brand to trick users into sharing personal information.",
+        "Sends fake emails linking to a credential-stealing website."
+    ],
+    "Malware": [
+        "Distributes malicious software harming user devices.",
+        "Automatically downloads malware upon website access.",
+        "Spreads ransomware locking user data.",
+        "Installs spyware tracking user activities."
+    ],
+    "Botnet": [
+        "Controls a botnet for launching DDoS attacks.",
+        "Recruits user devices into a botnet via malware.",
+        "Uses the domain to manage and distribute botnet commands.",
+        "Conducts malicious activities through a botnet."
+    ],
+    "Spam": [
+        "Sends spam emails promoting fraudulent products/services.",
+        "Distributes malicious links via spam emails or messages.",
+        "Uses the domain for mass unsolicited email campaigns.",
+        "Tricks users into clicking spam links to fake websites."
+    ],
+    "Pharming": [
+        "Redirects users to fake websites to steal information.",
+        "Alters DNS settings to lead users to malicious sites.",
+        "Deceives users into accessing fake websites via DNS manipulation.",
+        "Performs pharming attacks to harvest sensitive data."
+    ],
+    "Counterfeit": [
+        "Sells counterfeit products, violating intellectual property rights.",
+        "Impersonates a brand to scam users with fake goods.",
+        "Uses fake logos/branding to deceive customers.",
+        "Operates a fraudulent website mimicking an official store."
+    ]
+}
+
 # === Giao diện nhập liệu ===
 st.set_page_config(page_title="Fake Website Takedown Tool", page_icon="🔒")
 st.title("🔒 Fake Website Takedown Tool (Bulk)")
@@ -159,12 +199,13 @@ else:
 domains_input = st.text_area("🌐 Nhập danh sách tên miền giả mạo (mỗi dòng một domain)", height=100)
 abuse_type = st.selectbox("🚨 Chọn loại vi phạm", ["Phishing", "Malware", "Botnet", "Spam", "Pharming", "Counterfeit"])
 evidence = st.text_area("📎 Nhập bằng chứng bổ sung (URL, mô tả, v.v.)", height=100)
-description = st.text_area("📝 Mô tả hành vi giả mạo", height=100)
+description = st.selectbox("📝 Chọn mô tả hành vi giả mạo", DESCRIPTION_OPTIONS[abuse_type])
+custom_description = st.text_area("📝 (Tùy chọn) Nhập mô tả tùy chỉnh (bằng tiếng Anh)", height=100, placeholder="Để trống nếu dùng mô tả sẵn.")
 
 # === Khi nhấn nút Xử lý ===
 if st.button("⚔️ Xử lý hàng loạt"):
     # Kiểm tra các trường bắt buộc
-    if not all([sender_email, password, domains_input, abuse_type, description]):
+    if not all([sender_email, password, domains_input, abuse_type]):
         st.error("⚠️ Vui lòng nhập đầy đủ các trường bắt buộc!")
     else:
         # Chia danh sách domain
@@ -172,6 +213,9 @@ if st.button("⚔️ Xử lý hàng loạt"):
         if not domains:
             st.error("⚠️ Vui lòng nhập ít nhất một domain!")
             st.stop()
+
+        # Dùng custom_description nếu có, nếu không thì dùng description từ dropdown
+        final_description = custom_description if custom_description else description
 
         results = []
         for domain in domains:
@@ -198,7 +242,7 @@ if st.button("⚔️ Xử lý hàng loạt"):
             report_body = EMAIL_TEMPLATES[abuse_type].format(
                 domain=domain,
                 evidence=evidence if evidence else "No additional evidence provided",
-                description=description
+                description=final_description
             )
 
             # Gửi email báo cáo
@@ -231,7 +275,7 @@ if st.button("⚔️ Xử lý hàng loạt"):
             log_message = (
                 f"Report processed: Domain={domain}, DNSProvider={dns_provider}, "
                 f"To={to_email}, AbuseType={abuse_type}, EmailStatus={email_status}, "
-                f"DomainStatus={domain_status}, Evidence={evidence}, Description={description}, Content=\n{report_body}"
+                f"DomainStatus={domain_status}, Evidence={evidence}, Description={final_description}, Content=\n{report_body}"
             )
             logger.info(log_message)
             results.append(
