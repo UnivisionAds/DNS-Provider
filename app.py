@@ -25,7 +25,13 @@ try:
     accounts = {
         st.secrets["gmail"]["account1"]["sender_email"]: st.secrets["gmail"]["account1"]["password"],
         st.secrets["gmail"]["account2"]["sender_email"]: st.secrets["gmail"]["account2"]["password"],
-        st.secrets["gmail"]["account3"]["sender_email"]: st.secrets["gmail"]["account3"]["password"]
+        st.secrets["gmail"]["account3"]["sender_email"]: st.secrets["gmail"]["account3"]["password"],
+        st.secrets["gmail"]["account4"]["sender_email"]: st.secrets["gmail"]["account4"]["password"],
+        st.secrets["gmail"]["account5"]["sender_email"]: st.secrets["gmail"]["account5"]["password"],
+        st.secrets["gmail"]["account6"]["sender_email"]: st.secrets["gmail"]["account6"]["password"],
+        st.secrets["gmail"]["account7"]["sender_email"]: st.secrets["gmail"]["account7"]["password"],
+        st.secrets["gmail"]["account8"]["sender_email"]: st.secrets["gmail"]["account8"]["password"],
+        st.secrets["gmail"]["account9"]["sender_email"]: st.secrets["gmail"]["account9"]["password"]
     }
 except KeyError as e:
     st.warning(f"⚠️ Lỗi cấu hình secrets: {e}. Sử dụng nhập thủ công.")
